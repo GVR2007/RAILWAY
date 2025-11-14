@@ -1,0 +1,2675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Administrator’s Smart Railway Dashboard</title>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Rajdhani', sans-serif;
+    background-color: #0a0f1d;
+    color: white;
+    overflow: hidden;
+  }
+
+  .mode-selector {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1001;
+    background: rgba(20, 20, 30, 0.9);
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.5);
+  }
+
+  .mode-selector button {
+    background: #00ffff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #000;
+    margin: 0 5px;
+  }
+
+  .mode-selector button.active {
+    background: #00cccc;
+  }
+
+  /* Admin Dashboard Styles */
+  .admin-dashboard {
+    display: none;
+  }
+
+  .admin-dashboard.active {
+    display: block;
+  }
+
+  .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: rgba(20, 20, 30, 0.9);
+    border-bottom: 1px solid #00ffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    z-index: 1000;
+  }
+
+  .header .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header input {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid #00ffff;
+    color: #fff;
+    padding: 4px;
+    width: 200px;
+  }
+
+  .header input::placeholder {
+    color: #aaa;
+  }
+
+  .header .icons {
+    display: flex;
+    gap: 15px;
+  }
+
+  .header .icon {
+    cursor: pointer;
+    font-size: 20px;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    width: 250px;
+    height: calc(100vh - 60px);
+    background: rgba(20, 20, 30, 0.9);
+    border-right: 1px solid #00ffff;
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .sidebar h3 {
+    margin-bottom: 20px;
+    color: #00ffff;
+  }
+
+  .sidebar ul {
+    list-style: none;
+  }
+
+  .sidebar li {
+    margin-bottom: 10px;
+    cursor: pointer;
+    padding: 10px;
+    border-radius: 5px;
+    transition: background 0.3s;
+  }
+
+  .sidebar li:hover, .sidebar li.active {
+    background: rgba(0, 255, 255, 0.2);
+  }
+
+  .main-content {
+    margin-left: 250px;
+    margin-top: 60px;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+
+  .panel {
+    display: none;
+    padding: 20px;
+  }
+
+  .panel.active {
+    display: block;
+  }
+
+  .overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+  }
+
+  .metric {
+    background: rgba(20, 20, 30, 0.9);
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    border: 1px solid #00ffff;
+  }
+
+  .metric h4 {
+    font-size: 24px;
+    margin-bottom: 5px;
+  }
+
+  .metric p {
+    font-size: 14px;
+  }
+
+  #admin-map {
+    height: 500px;
+    width: 100%;
+    border-radius: 10px;
+  }
+
+  .train-list, .alerts-list {
+    background: rgba(20, 20, 30, 0.9);
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 20px;
+  }
+
+  .train-item, .alert-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #333;
+  }
+
+  .train-item:last-child, .alert-item:last-child {
+    border-bottom: none;
+  }
+
+  button {
+    background: #00ffff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #000;
+  }
+
+  button:hover {
+    background: #00cccc;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 10px;
+    background: rgba(20, 20, 30, 0.9);
+    border-top: 1px solid #00ffff;
+    margin-top: 20px;
+  }
+
+  /* Live Simulation Styles */
+  .live-simulation {
+    display: none;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  .live-simulation.active {
+    display: flex;
+  }
+
+  .live-map {
+    flex: 3;
+    height: 100%;
+    filter: brightness(0.9);
+  }
+
+  .live-dashboard {
+    flex: 1.3;
+    background: rgba(15, 15, 25, 0.95);
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    box-shadow: -2px 0 10px #00ffff55;
+  }
+
+  .input-field {
+    width: 100%;
+    padding: 8px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid #00ffff;
+    border-radius: 5px;
+    color: white;
+    margin-bottom: 10px;
+  }
+
+  .input-field::placeholder {
+    color: #aaa;
+  }
+
+  .btn {
+    background: #00ffff;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    color: #000;
+    font-weight: bold;
+  }
+
+  .btn:hover {
+    background: #00cccc;
+  }
+
+  .decision-log {
+    max-height: 200px;
+    overflow-y: auto;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 10px;
+  }
+
+  .decision-item {
+    background: rgba(255,255,255,0.08);
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 5px;
+    font-size: 12px;
+    border-left: 3px solid #00ffff;
+  }
+
+  .reroute-buttons {
+    margin-top: 5px;
+  }
+
+  .reroute-buttons button {
+    margin-right: 5px;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .live-dashboard h2 {
+    color: #00ffff;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .live-dashboard canvas {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+  }
+
+  .train-info {
+    background: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 5px;
+    font-size: 14px;
+    border-left: 3px solid #00ffff;
+  }
+
+  .alert {
+    background: rgba(255,0,0,0.3);
+    border: 1px solid #ff5555;
+    border-radius: 6px;
+    padding: 6px;
+    margin: 6px 0;
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 50% { opacity: 0.3; } }
+
+  /* Train animation marker */
+  .train-icon {
+    background-color: #00ff88;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    box-shadow: 0 0 10px #00ff88;
+  }
+
+  /* Station node */
+  .station-icon {
+    background-color: #ff4444;
+    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    box-shadow: 0 0 15px #ff0000;
+  }
+
+  /* Signal icon */
+  .signal-green {
+    background-color: #00ff00;
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    box-shadow: 0 0 10px #00ff00;
+  }
+
+  .signal-red {
+    background-color: #ff0000;
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    box-shadow: 0 0 10px #ff0000;
+  }
+
+  .signal-yellow {
+    background-color: #ffff00;
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    box-shadow: 0 0 10px #ffff00;
+  }
+
+  /* Add Train Popup */
+  #addTrainPopup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(10, 20, 40, 0.98);
+    border: 2px solid #00ffff;
+    border-radius: 12px;
+    box-shadow: 0 0 30px #00ffffaa;
+    padding: 25px;
+    width: 350px;
+    color: #fff;
+    z-index: 2000;
+    font-family: 'Rajdhani', sans-serif;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translate(-50%, -55%); }
+    to { opacity: 1; transform: translate(-50%, -50%); }
+  }
+
+  .route-card:hover {
+    background: rgba(0, 255, 255, 0.2);
+    transform: scale(1.02);
+    box-shadow: 0 0 15px #00ffff80;
+  }
+</style>
+</head>
+
+<body>
+
+<!-- Mode Selector -->
+<div class="mode-selector">
+  <button id="admin-mode" class="active">Admin Dashboard</button>
+  <button id="live-mode">Live Simulation</button>
+  <button id="add-train-btn">➕ Add Train</button>
+</div>
+
+<!-- Admin Dashboard -->
+<div class="admin-dashboard active">
+  <!-- Header -->
+  <div class="header">
+    <div class="search-bar">
+      <input type="text" placeholder="Search trains, stations..." />
+    </div>
+    <div class="icons">
+      <span class="icon">🔔</span>
+      <span class="icon">👤</span>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <h3>Navigation</h3>
+    <ul>
+      <li data-panel="overview" class="active">🧭 System Overview</li>
+      <li data-panel="map-panel">🗺️ Live Map</li>
+      <li data-panel="trains">🚆 Train Management</li>
+      <li data-panel="signals">🚦 Signal & Track Control</li>
+      <li data-panel="alerts">⚠️ Alerts & Emergency</li>
+      <li data-panel="maintenance">🧰 Maintenance</li>
+      <li data-panel="staff">👨‍💼 Staff Management</li>
+      <li data-panel="analytics">📊 Analytics & Reports</li>
+      <li data-panel="config">⚙️ System Configuration</li>
+      <li data-panel="ai">🧠 AI & Automation</li>
+    </ul>
+    <h3>🌦️ Weather Conditions</h3>
+    <div id="weather-info"></div>
+    <h3>📊 Rule Application Insights</h3>
+<div id="ruleChart" style="width: 300px; height: 200px;"></div>
+    <h3>🧠 AI Performance</h3>
+    <div id="ai-metrics" style="font-size:14px;"></div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- System Overview Panel -->
+    <div id="overview" class="panel active">
+      <h2>🧭 System Overview</h2>
+      <div class="overview">
+        <div class="metric">
+          <h4 id="active-stations">5</h4>
+          <p>🚉 Total Active Stations</p>
+        </div>
+        <div class="metric">
+          <h4 id="active-trains">2</h4>
+          <p>🚆 Active Trains</p>
+        </div>
+        <div class="metric">
+          <h4 id="alerts">0</h4>
+          <p>⚠️ Alerts</p>
+        </div>
+        <div class="metric">
+          <h4 id="maintenance">1</h4>
+          <p>🛠️ Maintenance Tasks</p>
+        </div>
+        <div class="metric">
+          <h4 id="schedule-accuracy">95%</h4>
+          <p>📅 Schedule Accuracy</p>
+        </div>
+        <div class="metric">
+          <h4 id="revenue">₹280,800</h4>
+          <p>💰 Total Revenue Today</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Map Panel -->
+    <div id="map-panel" class="panel">
+      <h2>🗺️ Live Map</h2>
+      <div id="admin-map"></div>
+    </div>
+
+    <!-- Train Management Panel -->
+    <div id="trains" class="panel">
+      <h2>🚆 Train Management</h2>
+      <div id="train-list" class="train-list"></div>
+      <div id="train-status" class="train-list"></div>
+    </div>
+
+    <!-- Signal & Track Control Panel -->
+    <div id="signals" class="panel">
+      <h2>🚦 Signal & Track Control</h2>
+      <p>Signal controls and track management here.</p>
+    </div>
+
+    <!-- Alerts & Emergency Panel -->
+    <div id="alerts" class="panel">
+      <h2>⚠️ Alerts & Emergency</h2>
+      <div class="alerts-list">
+        <div class="alert-item">
+          <span>Signal failure at Agra</span>
+          <button>Resolve</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Maintenance Panel -->
+    <div id="maintenance" class="panel">
+      <h2>🧰 Maintenance</h2>
+      <p>Maintenance tasks and schedules.</p>
+    </div>
+
+    <!-- Staff Management Panel -->
+    <div id="staff" class="panel">
+      <h2>👨‍💼 Staff Management</h2>
+      <p>Crew assignments and schedules.</p>
+    </div>
+
+    <!-- Analytics & Reports Panel -->
+    <div id="analytics" class="panel">
+      <h2>📊 Analytics & Reports</h2>
+      <p>Charts and reports here.</p>
+    </div>
+
+    <!-- System Configuration Panel -->
+    <div id="config" class="panel">
+      <h2>⚙️ System Configuration</h2>
+      <p>Settings and configurations.</p>
+    </div>
+
+    <!-- AI & Automation Panel -->
+    <div id="ai" class="panel">
+      <h2>🧠 AI & Automation Tools</h2>
+      <div class="rules-panel">
+        <h3>📜 AI Rule Advisor</h3>
+        <p id="rule-text">Loading rules...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    © SmartRail 2025 | Version 3.2.1 | Powered by Indian Railways AI Lab
+  </div>
+</div>
+
+<!-- Live Simulation -->
+<div class="live-simulation">
+  <!-- Map -->
+  <div class="live-map" id="live-map"></div>
+
+  <!-- Dashboard -->
+  <div class="live-dashboard">
+    <div>
+      <h2>🚦 Smart Railway Dashboard</h2>
+      <div id="alert-panel"></div>
+      <div id="train-status"></div>
+      <h3>🧾 Decision Log</h3>
+      <div id="decision-log" class="decision-log"></div>
+    </div>
+
+    <div>
+      <button onclick="openAdvancedMap()" class="btn" style="width: 100%; margin-bottom: 10px;">🗺️ Advanced Live Map</button>
+    </div>
+
+    <div>
+      <h3>Controls</h3>
+      <button onclick="toggleSignals()">Toggle All Signals</button>
+      <button onclick="addTrain()">Add Train</button>
+      <div id="add-train-form" style="padding:10px; background:#0f172a; border-radius:10px; color:#00ffff; margin-top:10px;">
+        <input id="trainName" type="text" placeholder="Train Name" class="input-field"><br><br>
+        <select id="source" class="input-field">
+          <option value="Delhi">Delhi</option>
+          <option value="Agra">Agra</option>
+          <option value="Kanpur">Kanpur</option>
+          <option value="Lucknow">Lucknow</option>
+          <option value="Varanasi">Varanasi</option>
+          <option value="Patna">Patna</option>
+          <option value="Jaipur">Jaipur</option>
+          <option value="Bhopal">Bhopal</option>
+          <option value="Chandigarh">Chandigarh</option>
+          <option value="Mumbai">Mumbai</option>
+        </select><br><br>
+        <select id="destination" class="input-field">
+          <option value="Delhi">Delhi</option>
+          <option value="Agra">Agra</option>
+          <option value="Kanpur">Kanpur</option>
+          <option value="Lucknow">Lucknow</option>
+          <option value="Varanasi">Varanasi</option>
+          <option value="Patna">Patna</option>
+          <option value="Jaipur">Jaipur</option>
+          <option value="Bhopal">Bhopal</option>
+          <option value="Chandigarh">Chandigarh</option>
+          <option value="Mumbai">Mumbai</option>
+        </select><br><br>
+        <input id="speed" type="number" placeholder="Speed (km/h)" class="input-field"><br><br>
+        <button onclick="suggestRoutes()" class="btn">Suggest Routes</button><br><br>
+        <div id="routeOptions" style="color:#00ffff;"></div>
+        <div id="routesList"></div>
+        <button id="finalizeBtn" onclick="finalizeTrain()" class="btn" style="display:none;">Finalize Train</button>
+        <button onclick="addStation()" class="btn" style="margin-top:10px;">Add New Station</button>
+        <div id="add-station-form" style="padding:10px; background:#0f172a; border-radius:10px; color:#00ffff; margin-top:10px; display:none;">
+          <input id="stationName" type="text" placeholder="Station Name" class="input-field"><br><br>
+          <input id="stationLat" type="number" step="0.0001" placeholder="Latitude" class="input-field"><br><br>
+          <input id="stationLon" type="number" step="0.0001" placeholder="Longitude" class="input-field"><br><br>
+          <button onclick="submitAddStation()" class="btn">Add Station</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Add Train Popup -->
+<div id="addTrainPopup">
+  <h3>➕ Add New Train</h3>
+  <label for="popupTrainName">Train Name:</label>
+  <input type="text" id="popupTrainName" placeholder="e.g., Duronto Express" class="input-field"><br><br>
+  <label for="popupSource">Source Station:</label>
+  <select id="popupSource" class="input-field">
+    <option value="Delhi">Delhi</option>
+    <option value="Agra">Agra</option>
+    <option value="Kanpur">Kanpur</option>
+    <option value="Lucknow">Lucknow</option>
+    <option value="Varanasi">Varanasi</option>
+    <option value="Patna">Patna</option>
+    <option value="Jaipur">Jaipur</option>
+    <option value="Bhopal">Bhopal</option>
+    <option value="Chandigarh">Chandigarh</option>
+    <option value="Mumbai">Mumbai</option>
+  </select><br><br>
+  <label for="popupDestination">Destination Station:</label>
+  <select id="popupDestination" class="input-field">
+    <option value="Delhi">Delhi</option>
+    <option value="Agra">Agra</option>
+    <option value="Kanpur">Kanpur</option>
+    <option value="Lucknow">Lucknow</option>
+    <option value="Varanasi">Varanasi</option>
+    <option value="Patna">Patna</option>
+    <option value="Jaipur">Jaipur</option>
+    <option value="Bhopal">Bhopal</option>
+    <option value="Chandigarh">Chandigarh</option>
+    <option value="Mumbai">Mumbai</option>
+  </select><br><br>
+  <datalist id="stationList"></datalist>
+  <label for="popupSpeed">Speed (km/h):</label>
+  <input type="number" id="popupSpeed" placeholder="60" class="input-field"><br><br>
+  <button onclick="submitPopupAddTrain()" class="btn">Add Train</button>
+  <button onclick="closePopup()" class="btn" style="background:#ff4444;">Cancel</button>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- D3.js -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<script>
+  // 🌍 Shared Global Railway Data for Synchronization
+  window.railwayData = {
+    stations: [
+      { name: "Delhi", lat: 28.6139, lon: 77.2090 },
+      { name: "Agra", lat: 27.1767, lon: 78.0081 },
+      { name: "Kanpur", lat: 26.4499, lon: 80.3319 },
+      { name: "Lucknow", lat: 26.8467, lon: 80.9462 },
+      { name: "Varanasi", lat: 25.3176, lon: 82.9739 },
+      { name: "Patna", lat: 25.5941, lon: 85.1376 },
+      { name: "Jaipur", lat: 26.9124, lon: 75.7873 },
+      { name: "Bhopal", lat: 23.2599, lon: 77.4126 },
+      { name: "Chandigarh", lat: 30.7333, lon: 76.7794 },
+      { name: "Mumbai", lat: 19.0760, lon: 72.8777 },
+      { name: "Meerut", lat: 28.9845, lon: 77.7064 },
+      { name: "Aligarh", lat: 27.8974, lon: 78.0880 },
+      { name: "Prayagraj", lat: 25.4358, lon: 81.8463 },
+      { name: "Faridabad", lat: 28.4089, lon: 77.3178 },
+      { name: "Gwalior", lat: 26.2183, lon: 78.1828 },
+      { name: "Gorakhpur", lat: 26.7606, lon: 83.3732 },
+      { name: "Kota", lat: 25.2138, lon: 75.8648 }
+    ],
+    edges: [
+      { source: "Delhi", target: "Agra" },
+      { source: "Agra", target: "Kanpur" },
+      { source: "Kanpur", target: "Lucknow" },
+      { source: "Lucknow", target: "Varanasi" },
+      { source: "Varanasi", target: "Patna" },
+      { source: "Delhi", target: "Jaipur" },
+      { source: "Jaipur", target: "Bhopal" },
+      { source: "Bhopal", target: "Mumbai" },
+      { source: "Delhi", target: "Chandigarh" }
+    ],
+    trains: [
+      { name: "Shatabdi Express", route: ["Delhi", "Agra", "Kanpur", "Lucknow"], progress: 0, speed: 0.01, lastAction: 'NORMAL', arrived: false, status: 'RUNNING' },
+      { name: "Rajdhani Express", route: ["Delhi", "Jaipur", "Bhopal", "Mumbai"], progress: 0, speed: 0.008, lastAction: 'NORMAL', arrived: false, status: 'RUNNING' },
+      { name: "Garib Rath", route: ["Delhi", "Chandigarh"], progress: 0, speed: 0.012, lastAction: 'NORMAL', arrived: false, status: 'RUNNING' }
+    ],
+    signals: [
+      { lat: 27.5, lon: 79.2, state: "green" },
+      { lat: 26.7, lon: 81.0, state: "red" },
+      { lat: 25.3, lon: 83.0, state: "yellow" },
+      { lat: 26.9, lon: 75.8, state: "green" },
+      { lat: 23.3, lon: 77.4, state: "red" }
+    ]
+  };
+
+  // Backward compatibility for existing code
+  window.liveStations = {};
+  window.railwayData.stations.forEach(s => {
+    window.liveStations[s.name] = [s.lat, s.lon];
+  });
+  window.stationLayer = null;
+
+  // Utility to refresh network data after dynamic changes
+  async function refreshNetworkData() {
+    try {
+      const [stationRes, edgeRes] = await Promise.all([
+        fetch("http://127.0.0.1:5000/get_stations"),
+        fetch("http://127.0.0.1:5000/get_edges")
+      ]);
+      const stations = await stationRes.json();
+      const edges = await edgeRes.json();
+
+      window.railwayData.stations = stations;
+      window.railwayData.edges = edges;
+
+      // Update backward compatibility
+      window.liveStations = {};
+      stations.forEach(s => {
+        window.liveStations[s.name] = [s.lat, s.lon];
+      });
+
+      console.log("✅ Network refreshed:", stations.length, "stations,", edges.length, "edges");
+
+      // Re-render if maps are active
+      if (window.liveMap) renderStationsOnLiveMap();
+      if (adminMap) renderStationsOnAdminMap();
+
+    } catch (err) {
+      console.error("❌ Failed to refresh network data:", err);
+    }
+  }
+
+  // Render functions for maps
+  function renderStationsOnLiveMap() {
+    if (!window.liveMap) return;
+    // Clear existing layers if needed
+    // Add stations and tracks
+    const svg = d3.select("#live-map").select("svg");
+    const g = svg.select("g.leaflet-zoom-hide");
+
+    // Draw stations
+    const circles = g.selectAll("circle.station")
+      .data(window.railwayData.stations, d => d.name);
+
+    circles.enter()
+      .append("circle")
+      .attr("class", "station")
+      .attr("r", 6)
+      .attr("fill", "#00ffff")
+      .attr("stroke", "#0ff")
+      .attr("stroke-width", 1.5)
+      .attr("filter", "url(#glow-live)")
+      .merge(circles)
+      .attr("cx", d => window.liveMap.latLngToLayerPoint([d.lat, d.lon]).x)
+      .attr("cy", d => window.liveMap.latLngToLayerPoint([d.lat, d.lon]).y);
+
+    circles.exit().remove();
+
+    // Draw tracks
+    const lines = g.selectAll("line.track")
+      .data(window.railwayData.edges, d => d.source + "-" + d.target);
+
+    lines.enter()
+      .append("line")
+      .attr("class", "track")
+      .attr("stroke", "#00ff88")
+      .attr("stroke-width", 3)
+      .attr("stroke-dasharray", "6,3")
+      .attr("opacity", 0.7)
+      .merge(lines)
+      .attr("x1", d => {
+        const station = window.railwayData.stations.find(s => s.name === d.source);
+        return station ? window.liveMap.latLngToLayerPoint([station.lat, station.lon]).x : 0;
+      })
+      .attr("y1", d => {
+        const station = window.railwayData.stations.find(s => s.name === d.source);
+        return station ? window.liveMap.latLngToLayerPoint([station.lat, station.lon]).y : 0;
+      })
+      .attr("x2", d => {
+        const station = window.railwayData.stations.find(s => s.name === d.target);
+        return station ? window.liveMap.latLngToLayerPoint([station.lat, station.lon]).x : 0;
+      })
+      .attr("y2", d => {
+        const station = window.railwayData.stations.find(s => s.name === d.target);
+        return station ? window.liveMap.latLngToLayerPoint([station.lat, station.lon]).y : 0;
+      });
+
+    lines.exit().remove();
+  }
+
+  function renderStationsOnAdminMap() {
+    if (!adminMap) return;
+    // Similar to live map but for admin map
+    const svg = d3.select("#admin-map").select("svg");
+    const g = svg.select("g.leaflet-zoom-hide");
+
+    // Draw stations
+    const circles = g.selectAll("circle.station")
+      .data(window.railwayData.stations, d => d.name);
+
+    circles.enter()
+      .append("circle")
+      .attr("class", "station")
+      .attr("r", 6)
+      .attr("fill", "#00ffff")
+      .attr("stroke", "#0ff")
+      .attr("stroke-width", 1.5)
+      .attr("filter", "url(#glow)")
+      .merge(circles)
+      .attr("cx", d => adminMap.latLngToLayerPoint([d.lat, d.lon]).x)
+      .attr("cy", d => adminMap.latLngToLayerPoint([d.lat, d.lon]).y);
+
+    circles.exit().remove();
+
+    // Draw tracks
+    const lines = g.selectAll("line.track")
+      .data(window.railwayData.edges, d => d.source + "-" + d.target);
+
+    lines.enter()
+      .append("line")
+      .attr("class", "track")
+      .attr("stroke", "#00ff88")
+      .attr("stroke-width", 3)
+      .attr("stroke-dasharray", "6,3")
+      .attr("opacity", 0.7)
+      .merge(lines)
+      .attr("x1", d => {
+        const station = window.railwayData.stations.find(s => s.name === d.source);
+        return station ? adminMap.latLngToLayerPoint([station.lat, station.lon]).x : 0;
+      })
+      .attr("y1", d => {
+        const station = window.railwayData.stations.find(s => s.name === d.source);
+        return station ? adminMap.latLngToLayerPoint([station.lat, station.lon]).y : 0;
+      })
+      .attr("x2", d => {
+        const station = window.railwayData.stations.find(s => s.name === d.target);
+        return station ? adminMap.latLngToLayerPoint([station.lat, station.lon]).x : 0;
+      })
+      .attr("y2", d => {
+        const station = window.railwayData.stations.find(s => s.name === d.target);
+        return station ? adminMap.latLngToLayerPoint([station.lat, station.lon]).y : 0;
+      });
+
+    lines.exit().remove();
+  }
+
+  // Mode switching
+  const adminModeBtn = document.getElementById('admin-mode');
+  const liveModeBtn = document.getElementById('live-mode');
+  const adminDashboard = document.querySelector('.admin-dashboard');
+  const liveSimulation = document.querySelector('.live-simulation');
+
+  adminModeBtn.addEventListener('click', () => {
+    adminModeBtn.classList.add('active');
+    liveModeBtn.classList.remove('active');
+    adminDashboard.classList.add('active');
+    liveSimulation.classList.remove('active');
+    // Initialize admin map if map panel is active
+    if (document.getElementById('map-panel').classList.contains('active')) {
+      initAdminMap();
+    }
+  });
+
+  liveModeBtn.addEventListener('click', () => {
+    liveModeBtn.classList.add('active');
+    adminModeBtn.classList.remove('active');
+    liveSimulation.classList.add('active');
+    adminDashboard.classList.remove('active');
+
+    // Initialize the map once and wait for it to be fully loaded
+    if (!window.liveMap) {
+      initLiveMap();
+      window.liveMap.whenReady(() => {
+        loadTrainsOnMap();
+      });
+    } else {
+      loadTrainsOnMap();
+    }
+  });
+
+  // Admin Dashboard Navigation
+  const sidebarItems = document.querySelectorAll('.sidebar li');
+  const panels = document.querySelectorAll('.admin-dashboard .panel');
+
+  sidebarItems.forEach(item => {
+    item.addEventListener('click', () => {
+      sidebarItems.forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+      const panelId = item.getAttribute('data-panel');
+      panels.forEach(panel => {
+        panel.classList.remove('active');
+        if (panel.id === panelId) {
+          panel.classList.add('active');
+          // Initialize admin map when map panel becomes active
+          if (panelId === 'map-panel') {
+            initAdminMap();
+          }
+        }
+      });
+    });
+  });
+
+  // Initialize admin map only when map panel is active
+  let adminMap;
+  function initAdminMap() {
+    if (!adminMap && document.getElementById('admin-map')) {
+      adminMap = L.map('admin-map').setView([26.5, 80.0], 6);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; SmartRail 2025'
+      }).addTo(adminMap);
+
+      // Add SVG overlay for D3
+      L.svg({ clickable: true }).addTo(adminMap);
+      const svg = d3.select("#admin-map").select("svg");
+      svg.style("pointer-events", "none");
+      const g = svg.append("g").attr("class", "leaflet-zoom-hide");
+
+      // Add glow filter to SVG
+      const defs = svg.append("defs");
+      defs.append("filter")
+        .attr("id", "glow")
+        .append("feGaussianBlur")
+        .attr("stdDeviation", "3")
+        .attr("result", "coloredBlur")
+        .append("feMerge")
+        .append("feMergeNode")
+        .attr("in", "coloredBlur")
+        .append("feMergeNode")
+        .attr("in", "SourceGraphic");
+
+    // Use shared global data directly
+
+      // Function to project lat/lon to map pixel coordinates
+      function projectPoint(d) {
+        const point = adminMap.latLngToLayerPoint([d.lat, d.lon]);
+        return [point.x, point.y];
+      }
+
+      // Draw stations
+      function drawStations() {
+        const circles = g.selectAll("circle.station")
+          .data(window.railwayData.stations, d => d.name);
+
+        const merged = circles.enter()
+          .append("circle")
+          .attr("class", "station")
+          .attr("r", 6)
+          .attr("fill", "#00ffff")
+          .attr("stroke", "#0ff")
+          .attr("stroke-width", 1.5)
+          .attr("filter", "url(#glow)")
+          .merge(circles)
+          .attr("cx", d => projectPoint(d)[0])
+          .attr("cy", d => projectPoint(d)[1]);
+
+        merged.on("click", function(event, d) {
+          event.stopPropagation();
+          event.preventDefault();
+          alert(`Station: ${d.name}\nLat: ${d.lat}, Lon: ${d.lon}`);
+        }).style("pointer-events", "auto");
+
+        circles.exit().remove();
+      }
+
+      // Draw tracks
+      function drawTracks() {
+        const lines = g.selectAll("line.track")
+          .data(window.railwayData.edges, d => d.source + "-" + d.target);
+
+        lines.enter()
+          .append("line")
+          .attr("class", "track")
+          .attr("stroke", "#00ff88")
+          .attr("stroke-width", 3)
+          .attr("stroke-dasharray", "6,3")
+          .attr("opacity", 0.7)
+          .merge(lines)
+          .attr("x1", d => {
+            const station = getStation(d.source);
+            return station ? projectPoint(station)[0] : 0;
+          })
+          .attr("y1", d => {
+            const station = getStation(d.source);
+            return station ? projectPoint(station)[1] : 0;
+          })
+          .attr("x2", d => {
+            const station = getStation(d.target);
+            return station ? projectPoint(station)[0] : 0;
+          })
+          .attr("y2", d => {
+            const station = getStation(d.target);
+            return station ? projectPoint(station)[1] : 0;
+          });
+
+        lines.exit().remove();
+      }
+
+      // Helper to get station by name
+      function getStation(name) {
+        return window.railwayData.stations.find(s => s.name === name);
+      }
+
+      // Draw signals
+      function drawSignals() {
+        const circles = g.selectAll("circle.signal")
+          .data(window.railwayData.signals);
+
+        circles.enter()
+          .append("circle")
+          .attr("class", "signal")
+          .attr("r", 5)
+          .attr("fill", d => d.state === "green" ? "lime" : d.state === "yellow" ? "yellow" : "red")
+          .attr("filter", "url(#glow)")
+          .merge(circles)
+          .attr("cx", d => projectPoint(d)[0])
+          .attr("cy", d => projectPoint(d)[1])
+          .on("click", (event, d) => {
+            // Cycle signal state
+            d.state = d.state === "green" ? "yellow" : d.state === "yellow" ? "red" : "green";
+            drawSignals();
+          });
+
+        circles.exit().remove();
+      }
+
+    // Animate trains
+    function animateTrains() {
+      window.railwayData.trains.forEach(train => {
+        if (train.arrived) return; // Skip if already arrived
+
+        const routeStations = train.route.map(r => getStation(r)).filter(Boolean);
+        if (routeStations.length < 2) return;
+        const path = routeStations.map(s => projectPoint(s));
+        const totalSegments = path.length - 1;
+        let segment = Math.floor(train.progress);
+        const t = train.progress - segment;
+        const start = path[segment];
+        const end = path[segment + 1];
+        if (!start || !end) return;
+
+        const x = start[0] + (end[0] - start[0]) * t;
+        const y = start[1] + (end[1] - start[1]) * t;
+
+        const trainSel = g.selectAll("circle.train").filter(d => d.name === train.name);
+        if (trainSel.empty()) {
+          g.append("circle")
+            .datum(train)
+            .attr("class", "train")
+            .attr("r", 5)
+            .attr("fill", "#ff00aa")
+            .attr("filter", "url(#glow)")
+            .attr("cx", x)
+            .attr("cy", y)
+            .on("click", (event, d) => {
+              alert(`Train: ${d.name}\nRoute: ${d.route.join(" → ")}\nProgress: ${(d.progress * 100).toFixed(1)}%`);
+            });
+        } else {
+          trainSel
+            .attr("cx", x)
+            .attr("cy", y);
+        }
+
+        train.progress += train.speed;
+
+        if (train.progress >= totalSegments) {
+          train.progress = totalSegments;
+          train.arrived = true;
+        }
+
+        checkSimulationEnd();
+      });
+    }
+
+      // Update positions on map move/zoom
+      function updatePositions() {
+        drawStations();
+        drawTracks();
+        drawSignals();
+        animateTrains();
+      }
+
+      adminMap.on("zoomend moveend", updatePositions);
+
+      // Initial draw
+      updatePositions();
+
+      // Start train animation loop
+      d3.interval(animateTrains, 100);
+
+      // Simulate dynamic updates
+      setInterval(() => {
+        // Randomly change signal states
+        window.railwayData.signals.forEach(sig => {
+          if (Math.random() < 0.1) { // 10% chance
+            sig.state = sig.state === "green" ? "yellow" : sig.state === "yellow" ? "red" : "green";
+          }
+        });
+        drawSignals();
+      }, 5000);
+    }
+  }
+
+  // AI Decision Integration
+  async function getAIDecision(trains) {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/decide', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trains: trains })
+      });
+      const decisions = await response.json();
+      return decisions;
+    } catch (error) {
+      console.error('AI Decision Error:', error);
+      return [{ action: 'NORMAL', reason: 'AI unavailable.' }];
+    }
+  }
+
+  // Load and display rules
+  async function loadRules() {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/rules');
+      const csvText = await response.text();
+      const lines = csvText.split('\n').filter(line => line.trim());
+      const rules = lines.slice(1).map(line => {
+        const [ruleNo, ruleText] = line.split(',');
+        return { ruleNo: ruleNo.trim(), ruleText: ruleText.trim() };
+      });
+      return rules;
+    } catch (error) {
+      console.error('Error loading rules:', error);
+      return [];
+    }
+  }
+
+  async function displayRandomRule() {
+    const rules = await loadRules();
+    if (rules.length > 0) {
+      const randomRule = rules[Math.floor(Math.random() * rules.length)];
+      document.getElementById('rule-text').textContent = `${randomRule.ruleNo}: ${randomRule.ruleText}`;
+    } else {
+      document.getElementById('rule-text').textContent = 'No rules available.';
+    }
+  }
+
+  displayRandomRule();
+  setInterval(displayRandomRule, 5000);
+
+  // Simulate real-time updates for admin dashboard
+  setInterval(() => {
+    document.getElementById('active-trains').textContent = Math.floor(Math.random() * 5) + 1;
+    document.getElementById('alerts').textContent = Math.floor(Math.random() * 3);
+    document.getElementById('revenue').textContent = '₹' + (Math.floor(Math.random() * 50000) + 200000).toLocaleString();
+  }, 10000);
+
+  // Live Simulation Variables
+  let liveMap;
+  let trains = {};
+  let routes = {};
+  let colors = {};
+  let liveStations = {};
+  let signals = [];
+  let edges = [];
+  let stations = [];
+
+  function updateVisibleStations() {
+    if (!window.liveMap) {
+      console.warn("⚠️ Live map not initialized yet — skipping visible station update.");
+      return;
+    }
+
+    const bounds = window.liveMap.getBounds();
+    const stationList = document.getElementById("stationList");
+    stationList.innerHTML = "";
+    for (const [name, coord] of Object.entries(window.liveStations)) {
+      const latLng = L.latLng(coord[0], coord[1]);
+      if (bounds.contains(latLng)) {
+        const option = document.createElement("option");
+        option.value = name;
+        stationList.appendChild(option);
+      }
+    }
+  }
+
+  function checkSimulationEnd() {
+  const allDone = window.railwayData.trains.every(
+    t =>
+      t.progress >= t.route.length - 1 || 
+      t.arrived === true
+  );
+
+  if (allDone && collisionEngineEnabled) {
+    console.log("🎉 All trains have reached destinations — stopping collision engine.");
+    collisionEngineEnabled = false;
+  }
+}
+
+
+  function highlightStation(name, color) {
+    const coord = window.liveStations[name];
+    if (!coord) return;
+    L.circleMarker(coord, {
+      radius: 10,
+      color: color,
+      weight: 3,
+      fillOpacity: 0.3
+    }).addTo(window.liveMap).bindPopup(`<b>${name}</b> Selected`);
+  }
+
+  function moveTrains() {
+    Object.entries(trains).forEach(([name, t]) => {
+      const current = t.coords[t.index];
+      const next = t.coords[(t.index + 1) % t.coords.length];
+      const signal = signals[t.index % signals.length].state;
+
+      // Adjust speed based on signal and AI decisions
+      let factor = signal === 'green' ? 1 : signal === 'yellow' ? 0.4 : 0;
+      if (t.speedFactor !== undefined) {
+        factor = t.speedFactor;
+        t.speedFactor = undefined; // Reset after use
+      }
+      t.signal = signal;
+
+      const lat = current[0] + (next[0] - current[0]) * factor * 0.05;
+      const lon = current[1] + (next[1] - current[1]) * factor * 0.05;
+      t.marker.setLatLng([lat, lon]);
+
+      t.fuel += factor * 2;
+      t.revenue += factor * 4;
+
+      if (factor > 0.8) t.index = (t.index + 1) % t.coords.length;
+
+      // ETA = Remaining stations * constant time factor
+      const remaining = t.coords.length - t.index;
+      t.eta = `${(remaining * (10 / (factor || 0.1))).toFixed(1)} mins`;
+    });
+    detectCongestion();
+    updateLiveDashboard();
+  }
+
+  function updateLiveDashboard() {
+    const panel = document.getElementById('train-status');
+    panel.innerHTML = "";
+    for (const [name, t] of Object.entries(trains)) {
+      panel.innerHTML += `
+        <div class="train-info">
+          <b>${name}</b><br>
+          Signal Ahead: ${t.signal}<br>
+          Fuel: ${t.fuel.toFixed(1)} L | Revenue: ₹${t.revenue.toFixed(1)}<br>
+          ETA: ${t.eta}
+        </div>
+      `;
+    }
+  }
+
+  async function detectCongestion() {
+    const alertPanel = document.getElementById('alert-panel');
+    alertPanel.innerHTML = '';
+    const trainList = Object.entries(trains).map(([name, t]) => ({
+      name: name,
+      lat: t.marker.getLatLng().lat,
+      lon: t.marker.getLatLng().lng,
+      current_station: t.coords[t.index] ? getStationName(t.coords[t.index]) : 'Unknown',
+      destination: t.coords[t.coords.length - 1] ? getStationName(t.coords[t.coords.length - 1]) : 'Unknown'
+    }));
+
+    // Get AI decisions
+    const decisions = await getAIDecision(trainList);
+
+    // Display decisions
+    decisions.forEach(decision => {
+      if (decision.action !== 'NORMAL') {
+        const affected = decision.affected_trains ? decision.affected_trains.join(' and ') : 'Trains';
+        let alertHtml = `<div class='alert'>🚨 ${decision.action}: ${affected} - ${decision.reason}`;
+        if (decision.action === 'REROUTE' && decision.affected_trains) {
+          alertHtml += `<div class='reroute-buttons'>
+            <button onclick="approveReroute('${decision.affected_trains[0]}', '${decision.new_route}')">Approve</button>
+            <button onclick="rejectReroute('${decision.affected_trains[0]}')">Reject</button>
+          </div>`;
+        }
+        alertHtml += '</div>';
+        alertPanel.innerHTML += alertHtml;
+      }
+    });
+
+    // Apply decisions to train speeds
+    decisions.forEach(decision => {
+      if (decision.affected_trains) {
+        decision.affected_trains.forEach(trainName => {
+          if (trains[trainName]) {
+            if (decision.action === 'STOP') {
+              trains[trainName].speedFactor = 0;
+            } else if (decision.action === 'SLOW') {
+              trains[trainName].speedFactor = 0.4;
+            } else if (decision.action === 'REROUTE') {
+              // Store reroute for approval
+              trains[trainName].pendingReroute = decision.new_route;
+            }
+          }
+        });
+      }
+    });
+  }
+
+  function getStationName(coord) {
+    for (const [name, c] of Object.entries(window.liveStations)) {
+      if (c[0] === coord[0] && c[1] === coord[1]) return name;
+    }
+    return 'Unknown';
+  }
+
+  function approveReroute(trainName, newRoute) {
+    if (trains[trainName] && trains[trainName].pendingReroute) {
+      const newCoords = newRoute.map(s => window.liveStations[s]);
+      trains[trainName].coords = newCoords;
+      trains[trainName].index = 0;
+      trains[trainName].pendingReroute = null;
+      // Redraw polyline
+      if (trains[trainName].polyline) window.liveMap.removeLayer(trains[trainName].polyline);
+      trains[trainName].polyline = L.polyline(newCoords, { color: colors[trainName], weight: 2, dashArray: "5,10" }).addTo(window.liveMap);
+      // Add alternate route in different color
+      L.polyline(newCoords, { color: '#ff00ff', weight: 3, dashArray: "10,5", opacity: 0.8 }).addTo(window.liveMap);
+      alert(`Reroute approved for ${trainName}`);
+    }
+  }
+
+  function rejectReroute(trainName) {
+    if (trains[trainName]) {
+      trains[trainName].pendingReroute = null;
+      alert(`Reroute rejected for ${trainName}`);
+    }
+  }
+
+  async function updateDecisionLog() {
+    try {
+      const response = await fetch('http://127.0.0.1:5000/logs');
+      const logs = await response.json();
+      const logPanel = document.getElementById('decision-log');
+      logPanel.innerHTML = '';
+      logs.slice(-10).forEach(log => { // Show last 10 logs
+        logPanel.innerHTML += `<div class='decision-item'>
+          <b>${log.timestamp}</b> - ${log.action}: ${log.affected_trains ? log.affected_trains.join(', ') : 'Trains'}<br>
+          ${log.reason}
+        </div>`;
+      });
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+    }
+  }
+
+  function drawSignals() {
+    if (!window.liveMap) {
+      console.warn("⚠️ Live map not initialized yet — skipping signal draw.");
+      return;
+    }
+    signals.forEach(sig => {
+      const color = sig.state === 'green' ? 'lime' : sig.state === 'yellow' ? 'yellow' : 'red';
+      if (sig.marker) window.liveMap.removeLayer(sig.marker);
+      const div = L.divIcon({
+        className: '',
+        html: `<div style="width:10px;height:10px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color};"></div>`
+      });
+      sig.marker = L.marker(sig.loc, { icon: div }).addTo(window.liveMap)
+        .on('click', () => cycleSignal(sig));
+    });
+  }
+
+  function cycleSignal(sig) {
+    sig.state = sig.state === 'green' ? 'yellow' : sig.state === 'yellow' ? 'red' : 'green';
+    drawSignals();
+  }
+
+  function initLiveMap() {
+    if (window.liveMap) return;
+
+    window.liveMap = L.map("live-map").setView([26.5, 80.0], 6);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; SmartRail System"
+    }).addTo(window.liveMap);
+
+    // Add SVG overlay for D3
+    L.svg({ clickable: true }).addTo(window.liveMap);
+    const svg = d3.select("#live-map").select("svg");
+    svg.style("pointer-events", "none");
+    const g = svg.append("g").attr("class", "leaflet-zoom-hide");
+
+    // Add glow filter to SVG
+    const defs = svg.append("defs");
+    defs.append("filter")
+      .attr("id", "glow-live")
+      .append("feGaussianBlur")
+      .attr("stdDeviation", "3")
+      .attr("result", "coloredBlur")
+      .append("feMerge")
+      .append("feMergeNode")
+      .attr("in", "coloredBlur")
+      .append("feMergeNode")
+      .attr("in", "SourceGraphic");
+
+    // Function to project lat/lon to map pixel coordinates
+    function projectPoint(d) {
+      const point = window.liveMap.latLngToLayerPoint([d.lat, d.lon]);
+      return [point.x, point.y];
+    }
+
+    // Draw stations
+    function drawStations() {
+      const circles = g.selectAll("circle.station")
+        .data(window.railwayData.stations, d => d.name);
+
+      const merged = circles.enter()
+        .append("circle")
+        .attr("class", "station")
+        .attr("r", 6)
+        .attr("fill", "#00ffff")
+        .attr("stroke", "#0ff")
+        .attr("stroke-width", 1.5)
+        .attr("filter", "url(#glow-live)")
+        .merge(circles)
+        .attr("cx", d => projectPoint(d)[0])
+        .attr("cy", d => projectPoint(d)[1]);
+
+      merged.on("click", function(event, d) {
+        event.stopPropagation();
+        event.preventDefault();
+        alert(`Station: ${d.name}\nLat: ${d.lat}, Lon: ${d.lon}`);
+      }).style("pointer-events", "auto");
+
+      circles.exit().remove();
+    }
+
+    // Draw tracks
+    function drawTracks() {
+      const lines = g.selectAll("line.track")
+        .data(window.railwayData.edges, d => d.source + "-" + d.target);
+
+      lines.enter()
+        .append("line")
+        .attr("class", "track")
+        .attr("stroke", "#00ff88")
+        .attr("stroke-width", 3)
+        .attr("stroke-dasharray", "6,3")
+        .attr("opacity", 0.7)
+        .merge(lines)
+        .attr("x1", d => {
+          const station = getStation(d.source);
+          return station ? projectPoint(station)[0] : 0;
+        })
+        .attr("y1", d => {
+          const station = getStation(d.source);
+          return station ? projectPoint(station)[1] : 0;
+        })
+        .attr("x2", d => {
+          const station = getStation(d.target);
+          return station ? projectPoint(station)[0] : 0;
+        })
+        .attr("y2", d => {
+          const station = getStation(d.target);
+          return station ? projectPoint(station)[1] : 0;
+        });
+
+      lines.exit().remove();
+    }
+
+    // Helper to get station by name
+    function getStation(name) {
+      return window.railwayData.stations.find(s => s.name === name);
+    }
+
+    // Draw signals
+    function drawSignals() {
+      const circles = g.selectAll("circle.signal")
+        .data(window.railwayData.signals);
+
+      circles.enter()
+        .append("circle")
+        .attr("class", "signal")
+        .attr("r", 5)
+        .attr("fill", d => d.state === "green" ? "lime" : d.state === "yellow" ? "yellow" : "red")
+        .attr("filter", "url(#glow-live)")
+        .merge(circles)
+        .attr("cx", d => projectPoint(d)[0])
+        .attr("cy", d => projectPoint(d)[1])
+        .on("click", (event, d) => {
+          // Cycle signal state
+          d.state = d.state === "green" ? "yellow" : d.state === "yellow" ? "red" : "green";
+          drawSignals();
+        });
+
+      circles.exit().remove();
+    }
+
+    // Animate trains
+    function animateTrains() {
+      window.railwayData.trains.forEach(train => {
+        const routeStations = train.route.map(r => getStation(r));
+        const path = routeStations.map(s => projectPoint(s));
+        const totalSegments = path.length - 1;
+        let segment = Math.floor(train.progress);
+        const t = train.progress - segment;
+        const start = path[segment];
+        const end = path[segment + 1];
+        if (!start || !end) return;
+
+        const x = start[0] + (end[0] - start[0]) * t;
+        const y = start[1] + (end[1] - start[1]) * t;
+
+        const trainSel = g.selectAll("circle.train").filter(d => d.name === train.name);
+        if (trainSel.empty()) {
+          g.append("circle")
+            .datum(train)
+            .attr("class", "train")
+            .attr("r", 5)
+            .attr("fill", "#ff00aa")
+            .attr("filter", "url(#glow-live)")
+            .attr("cx", x)
+            .attr("cy", y)
+            .on("click", (event, d) => {
+              alert(`Train: ${d.name}\nRoute: ${d.route.join(" → ")}\nProgress: ${(d.progress * 100).toFixed(1)}%`);
+            });
+        } else {
+          trainSel
+            .attr("cx", x)
+            .attr("cy", y);
+        }
+
+        train.progress += train.speed;
+        if (train.progress >= totalSegments) train.progress = 0;
+      });
+    }
+
+    // Update positions on map move/zoom
+    function updatePositions() {
+      drawStations();
+      drawTracks();
+      drawSignals();
+      animateTrains();
+    }
+
+    window.liveMap.on("zoomend moveend", updatePositions);
+
+    // Initial draw
+    updatePositions();
+
+    // Start train animation loop
+    d3.interval(animateTrains, 100);
+
+    // Simulate dynamic updates
+    setInterval(() => {
+      // Randomly change signal states
+      window.railwayData.signals.forEach(sig => {
+        if (Math.random() < 0.1) { // 10% chance
+          sig.state = sig.state === "green" ? "yellow" : sig.state === "yellow" ? "red" : "green";
+        }
+      });
+      drawSignals();
+    }, 5000);
+
+    // Update station list on map move/zoom
+    window.liveMap.whenReady(() => {
+      console.log("✅ Map is ready — updating stations...");
+      updateVisibleStations();
+      window.liveMap.on("moveend", updateVisibleStations);
+      window.liveMap.on("zoomend", updateVisibleStations);
+    });
+
+  }
+
+  // Control functions
+  function toggleSignals() {
+    signals.forEach(sig => sig.state = sig.state === 'green' ? 'red' : 'green');
+    drawSignals();
+  }
+
+  function addTrain() {
+    // Toggle the form visibility
+    const form = document.getElementById('add-train-form');
+    form.style.display = form.style.display === 'none' || form.style.display === '' ? 'block' : 'none';
+  }
+
+  function addStation() {
+    // Toggle the station form visibility
+    const form = document.getElementById('add-station-form');
+    form.style.display = form.style.display === 'none' || form.style.display === '' ? 'block' : 'none';
+  }
+
+ async function submitAddStation() {
+  const name = document.getElementById('stationName').value.trim();
+  const lat = parseFloat(document.getElementById('stationLat').value);
+  const lon = parseFloat(document.getElementById('stationLon').value);
+
+  // ✅ 1. Input validation
+  if (!name || isNaN(lat) || isNaN(lon)) {
+    alert('Please enter valid station name, latitude, and longitude.');
+    return;
+  }
+
+  // ✅ 2. Prevent duplicates
+  if (window.liveStations[name]) {
+    alert('Station already exists.');
+    return;
+  }
+
+  try {
+    // ✅ 3. Send new station to Flask backend
+    const res = await fetch("http://127.0.0.1:5000/add_station", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, lat, lon })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("Backend Error:", data);
+      alert(data.error || "Failed to add station on backend.");
+      return;
+    }
+
+    console.log("✅ Station added:", data);
+
+    // ✅ 4. Add station locally for instant map updates
+    window.liveStations[name] = [lat, lon];
+
+    // ✅ 5. Draw the new station on the Leaflet map
+    if (window.liveMap && window.stationLayer) {
+      L.circleMarker([lat, lon], {
+        radius: 6,
+        color: "#00ffff",
+        fillColor: "#00ffff",
+        fillOpacity: 0.8
+      }).addTo(window.stationLayer).bindPopup(`<b>${name}</b>`);
+    }
+
+    // ✅ 6. Draw the new connecting edges from Flask response
+    if (data.connected_edges && Array.isArray(data.connected_edges)) {
+      data.connected_edges.forEach(edge => {
+        const src = window.liveStations[edge.source];
+        const tgt = window.liveStations[edge.target];
+        if (src && tgt && window.liveMap) {
+          L.polyline([src, tgt], {
+            color: "#00ffaa",
+            weight: 2,
+            dashArray: "5,5",
+            opacity: 0.8
+          }).addTo(window.liveMap)
+          .bindPopup(`<b>${edge.source}</b> ↔ <b>${edge.target}</b><br>${edge.weight.toFixed(1)} km`);
+        }
+      });
+    }
+
+    // ✅ 7. Refresh dropdowns
+    updateStationSelects();
+
+    // ✅ 8. Clear the form fields
+    document.getElementById('stationName').value = '';
+    document.getElementById('stationLat').value = '';
+    document.getElementById('stationLon').value = '';
+
+    // ✅ 9. Hide the form
+    document.getElementById('add-station-form').style.display = 'none';
+
+    // ✅ 10. Success alert with backend message
+    alert(data.message || `Station ${name} added successfully!`);
+
+  } catch (error) {
+    console.error("❌ Error adding station:", error);
+    alert("Connection to backend failed. Please make sure Flask is running.");
+  }
+}
+
+  function updateStationSelects() {
+    const selects = ['source', 'destination', 'popupSource', 'popupDestination'];
+    selects.forEach(id => {
+      const select = document.getElementById(id);
+      if (select) {
+        select.innerHTML = '';
+        Object.keys(window.liveStations).forEach(station => {
+          const option = document.createElement('option');
+          option.value = station;
+          option.textContent = station;
+          select.appendChild(option);
+        });
+      }
+    });
+  }
+
+  async function submitAddTrain() {
+    const name = document.getElementById("trainName").value || "Unnamed Train";
+    const source = document.getElementById("source").value || "Delhi";
+    const destination = document.getElementById("destination").value || "Lucknow";
+    const speed = parseFloat(document.getElementById("speed").value) || 60;
+
+    const trainData = {
+      name,
+      source,
+      destination,
+      speed
+    };
+
+    try {
+      const res = await fetch("http://127.0.0.1:5000/add_train", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(trainData)
+      });
+
+      const data = await res.json();
+      console.log("✅ Train Added:", data);
+      alert(`Train ${name} added successfully!`);
+
+      // Clear form
+      document.getElementById("trainName").value = "";
+      document.getElementById("source").value = "";
+      document.getElementById("destination").value = "";
+      document.getElementById("speed").value = "";
+
+      // Optionally refresh train map or list
+      loadTrainsOnMap();
+  } catch (error) {
+    console.error("Error adding train:", error);
+    alert("Failed to add train. Please try again.");
+  }
+}
+
+async function loadTrainsOnMap() {
+    try {
+      const res = await fetch("http://127.0.0.1:5000/get_trains");
+      const trains = await res.json();
+
+      // Sync to global data
+      window.railwayData.trains = trains;
+
+      if (!window.liveMap) {
+        console.warn("❌ Map not initialized yet. Skipping update.");
+        return;
+      }
+
+      if (!window.trainLayer) {
+        window.trainLayer = L.layerGroup().addTo(window.liveMap);
+      }
+
+      if (!window.trainMarkers) {
+        window.trainMarkers = {};
+      }
+
+      if (!window.trainPolylines) {
+        window.trainPolylines = {};
+      }
+
+      if (!window.animatingTrains) {
+        window.animatingTrains = new Set();
+      }
+
+      // Clear old layers
+      window.trainLayer.clearLayers();
+
+      trains.forEach(train => {
+        let routeStations = train.route;
+        if (typeof routeStations === 'object' && !Array.isArray(routeStations) && routeStations.path) {
+          routeStations = routeStations.path;
+        }
+        if (!Array.isArray(routeStations) || routeStations.length < 2) return;
+
+        const routeCoords = routeStations.map(s => window.liveStations[s]).filter(Boolean);
+        if (routeCoords.length < 2) return;
+
+        // Add polyline
+        const polyline = L.polyline(routeCoords, {
+          color: "#00ffff",
+          weight: 3,
+          dashArray: "5, 10"
+        }).addTo(window.trainLayer);
+        window.trainPolylines[train.name] = polyline;
+
+        // Add marker if not exists
+        if (!window.trainMarkers[train.name]) {
+          const marker = L.circleMarker(routeCoords[0], {
+            radius: 7,
+            color: "#00ffcc",
+            fillColor: "#00ffff",
+            fillOpacity: 0.9
+          }).addTo(window.trainLayer).bindPopup(`<b>${train.name}</b>`);
+          window.trainMarkers[train.name] = marker;
+        }
+
+        // Start animation for each train
+        if (!window.animatingTrains.has(train.name)) {
+          window.animatingTrains.add(train.name);
+          animateTrain(train.name, routeCoords, train.speed);
+        }
+      });
+
+      // Remove old ones
+      Object.keys(window.trainMarkers).forEach(name => {
+        if (!trains.find(t => t.name === name)) {
+          if (window.trainMarkers[name]) {
+            window.trainLayer.removeLayer(window.trainMarkers[name]);
+            delete window.trainMarkers[name];
+          }
+          if (window.trainPolylines[name]) {
+            window.trainLayer.removeLayer(window.trainPolylines[name]);
+            delete window.trainPolylines[name];
+          }
+          window.animatingTrains.delete(name);
+        }
+      });
+    } catch (error) {
+      console.error("❌ Error loading trains:", error);
+    }
+  }
+
+  function animateTrain(trainName, routeCoords, speedKmph = 80) {
+    if (!window.liveMap) {
+      console.warn("❌ Map not initialized yet — cannot animate train.");
+      return;
+    }
+
+    const marker = window.trainMarkers[trainName];
+    if (!marker) {
+      console.warn(`❌ Marker for ${trainName} not found.`);
+      return;
+    }
+
+    // Convert km/h to meters per step (based on frame update)
+    const interval = 100; // update every 100ms
+    const stepMeters = (speedKmph * 1000 / 3600) * (interval / 1000); // meters per step
+
+    let currentSegment = 0;
+    let progress = 0;
+    let forward = true; // for ping-pong movement
+
+    // Debug checklist:
+    // - Check if routeCoords has at least 2 points
+    // - Verify speedKmph is positive
+    // - Ensure window.liveMap is initialized
+    // - Confirm marker is added to trainLayer
+
+    function moveAlongRoute() {
+      if (currentSegment >= routeCoords.length - 1 && forward) {
+        forward = false; // reverse direction
+      } else if (currentSegment <= 0 && !forward) {
+        forward = true; // forward again
+      }
+
+      const nextIndex = forward ? currentSegment + 1 : currentSegment - 1;
+      const start = L.latLng(routeCoords[currentSegment]);
+      const end = L.latLng(routeCoords[nextIndex]);
+      const totalDist = start.distanceTo(end);
+
+      const ratio = progress / totalDist;
+      const lat = start.lat + (end.lat - start.lat) * ratio;
+      const lng = start.lng + (end.lng - start.lng) * ratio;
+      marker.setLatLng([lat, lng]);
+
+      // Check proximity to signals and adjust speed
+      let speedFactor = 1; // default full speed
+      const currentPos = L.latLng(lat, lng);
+      signals.forEach(sig => {
+        const sigPos = L.latLng(sig.loc);
+        const distToSignal = currentPos.distanceTo(sigPos) / 1000; // km
+        if (distToSignal < 1) { // within 1km of signal
+          if (sig.state === 'red') {
+            speedFactor = 0; // stop
+          } else if (sig.state === 'yellow') {
+            speedFactor = 0.4; // slow
+          } // green: full speed
+        }
+      });
+
+      // Add glow trail effect
+      const trail = L.circleMarker(marker.getLatLng(), {
+        radius: 3,
+        color: "#00ffff",
+        opacity: 0.3,
+        fillColor: "#00ffff",
+        fillOpacity: 0.2
+      }).addTo(window.trainLayer);
+
+      // Fade trail after 2 seconds
+      setTimeout(() => {
+        if (window.liveMap && window.trainLayer.hasLayer(trail)) {
+          window.trainLayer.removeLayer(trail);
+        }
+      }, 2000);
+
+      progress += stepMeters * speedFactor;
+
+      if (progress >= totalDist) {
+        progress = 0;
+        currentSegment = nextIndex;
+      }
+
+      requestAnimationFrame(moveAlongRoute);
+    }
+
+    moveAlongRoute();
+  }
+
+  setInterval(loadTrainsOnMap, 10000);
+
+  // Fetch weather for main route cities
+  async function updateWeather() {
+    const cities = ["Delhi", "Agra", "Lucknow", "Varanasi"];
+    const infoDiv = document.getElementById("weather-info");
+    infoDiv.innerHTML = "";
+    for (const c of cities) {
+      const res = await fetch(`http://127.0.0.1:5000/weather/${c}`);
+      const data = await res.json();
+      infoDiv.innerHTML += `<div>📍 ${data.city}: ${data.condition}</div>`;
+    }
+  }
+  setInterval(updateWeather, 10000);
+
+  // Fetch rule analytics
+  async function updateAnalytics() {
+    const res = await fetch("http://127.0.0.1:5000/analytics");
+    const data = await res.json();
+
+    document.getElementById("ai-metrics").innerHTML = `
+      <b>Total AI Decisions:</b> ${data.total_decisions}<br>
+      <b>Avg Delay (mins):</b> ${data.avg_delay}<br>
+    `;
+
+    barData = Object.entries(data.rule_frequency).map(([key, value]) => ({key, value}));
+    svgBar.selectAll('*').remove();
+    const xBar = d3.scaleBand().domain(barData.map(d => d.key)).range([0, 300]).padding(0.1);
+    const yBar = d3.scaleLinear().domain([0, d3.max(barData, d => d.value) || 1]).range([200, 0]);
+    svgBar.selectAll('rect')
+      .data(barData)
+      .enter()
+      .append('rect')
+      .attr('x', d => xBar(d.key))
+      .attr('y', d => yBar(d.value))
+      .attr('width', xBar.bandwidth())
+      .attr('height', d => 200 - yBar(d.value))
+      .attr('fill', '#00ffff88');
+  }
+  setInterval(updateAnalytics, 7000);
+
+// D3 Rule chart
+const svgBar = d3.select('#ruleChart').append('svg').attr('width', 300).attr('height', 200);
+let barData = [];
+
+  // Add Train Popup functionality
+  document.getElementById('add-train-btn').addEventListener('click', () => {
+    document.getElementById('addTrainPopup').style.display = 'block';
+  });
+
+  function closePopup() {
+    document.getElementById('addTrainPopup').style.display = 'none';
+  }
+
+  async function submitPopupAddTrain() {
+    const name = document.getElementById("popupTrainName").value || "Unnamed Train";
+    const source = document.getElementById("popupSource").value || "Delhi";
+    const destination = document.getElementById("popupDestination").value || "Lucknow";
+    const speed = parseFloat(document.getElementById("popupSpeed").value) || 60;
+
+    const trainData = { name, source, destination, speed };
+
+    try {
+      const res = await fetch("http://127.0.0.1:5000/add_train", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(trainData)
+      });
+
+      const data = await res.json();
+      console.log("✅ Train Added:", data);
+      alert(`Train ${name} added successfully!`);
+
+      // Refresh appropriate section
+      if (window.liveMap) {
+        setTimeout(loadTrainsOnMap, 1000);
+      } else {
+        refreshTrainList();
+      }
+
+      // Clear form
+      ["popupTrainName", "popupSource", "popupDestination", "popupSpeed"].forEach(id => {
+        document.getElementById(id).value = "";
+      });
+
+      closePopup();
+    } catch (error) {
+      console.error("Error adding train:", error);
+      alert("Failed to add train. Please try again.");
+    }
+  }
+
+  // Cache for last AI actions to prevent flicker
+  let lastActionsCache = {};
+
+  // Function to compute current lat/lon from train progress
+  function getTrainPosition(train) {
+    const routeStations = train.route.map(r => getStation(r)).filter(Boolean);
+    if (routeStations.length < 2) return { lat: routeStations[0]?.lat || 0, lon: routeStations[0]?.lon || 0 };
+
+    const totalSegments = routeStations.length - 1;
+    let segment = Math.floor(train.progress);
+    const t = train.progress - segment;
+    const start = routeStations[segment];
+    const end = routeStations[segment + 1];
+    if (!start || !end) return { lat: start?.lat || 0, lon: start?.lon || 0 };
+
+    const lat = start.lat + (end.lat - start.lat) * t;
+    const lon = start.lon + (end.lon - start.lon) * t;
+    return { lat, lon };
+  }
+
+  // Helper to get station by name
+  function getStation(name) {
+    return window.railwayData.stations.find(s => s.name === name);
+  }
+
+  async function refreshTrainList() {
+    try {
+      const res = await fetch("http://127.0.0.1:5000/get_trains");
+      const trains = await res.json();
+
+      // Compute positions and prepare data for /decide
+      const trainData = trains.map(train => {
+        const pos = getTrainPosition(train);
+        return {
+          name: train.name,
+          lat: pos.lat,
+          lon: pos.lon,
+          current_station: train.route[Math.floor(train.progress)] || train.source,
+          destination: train.route[train.route.length - 1] || train.destination
+        };
+      });
+
+      // Call /decide endpoint
+      let decisions = [];
+      try {
+        const decideRes = await fetch("http://127.0.0.1:5000/decide", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trains: trainData })
+        });
+        decisions = await decideRes.json();
+      } catch (err) {
+        console.warn("AI decision endpoint unavailable:", err);
+        decisions = [{ action: 'NORMAL', reason: 'AI unavailable.' }];
+      }
+
+      // Update cache
+      decisions.forEach(decision => {
+        if (decision.affected_trains) {
+          decision.affected_trains.forEach(trainName => {
+            lastActionsCache[trainName] = decision.action;
+          });
+        }
+      });
+
+      const trainListDiv = document.getElementById("train-list");
+      trainListDiv.innerHTML = "";
+      trains.forEach(train => {
+        const action = lastActionsCache[train.name] || 'NORMAL';
+        const color = action === 'STOP' ? 'red' : action === 'SLOW' ? 'yellow' : action === 'REROUTE' ? 'cyan' : 'green';
+        const trainItem = document.createElement("div");
+        trainItem.className = "train-item";
+        trainItem.innerHTML = `
+          <span><b>${train.name}</b> - ${train.route[0]} to ${train.route[train.route.length - 1]}</span>
+          <span>Speed: ${(train.speed * 10000).toFixed(0)} km/h | Progress: ${(train.progress * 100).toFixed(1)}% | <span style="color:${color};">Action: ${action}</span></span>
+        `;
+        trainListDiv.appendChild(trainItem);
+      });
+    } catch (error) {
+      console.error("Error refreshing train list:", error);
+    }
+  }
+
+  // Polling function for AI decisions every 3 seconds
+  setInterval(refreshTrainList, 3000);
+
+
+
+  function previewRoute(path) {
+    if (!window.liveMap) {
+      console.warn("Map not initialized yet.");
+      return;
+    }
+
+    // Remove previous preview
+    if (window.previewLayer) window.liveMap.removeLayer(window.previewLayer);
+
+    const coords = path.map(st => window.liveStations[st]).filter(Boolean);
+    if (coords.length < 2) {
+      alert("Some station coordinates missing for this route!");
+      return;
+    }
+
+    window.previewLayer = L.polyline(coords, {
+      color: "#00ff88",
+      weight: 5,
+      opacity: 0.8,
+      dashArray: "10,6"
+    }).addTo(window.liveMap);
+
+    // Fit bounds to route
+    window.liveMap.fitBounds(L.latLngBounds(coords));
+  }
+
+  async function selectRoute(name, speed, route, distance) {
+    const res = await fetch("http://127.0.0.1:5000/add_train", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, speed, route, distance })
+    });
+
+    const data = await res.json();
+    if (data.message) {
+      alert(`✅ ${name} added successfully!\nRoute: ${route.join(" → ")}`);
+      document.getElementById("routeOptions").style.display = "none";
+      loadTrainsOnMap(); // Refresh train markers
+    } else {
+      alert("Error adding train.");
+    }
+  }
+
+
+  async function finalizeTrain() {
+    const selectedRoute = document.querySelector('input[name="selectedRoute"]:checked');
+    if (!selectedRoute) {
+      alert("Please select a route.");
+      return;
+    }
+
+    const name = document.getElementById("trainName").value || "Unnamed Train";
+    const source = document.getElementById("source").value;
+    const destination = document.getElementById("destination").value;
+    const speed = parseFloat(document.getElementById("speed").value) || 60;
+    const routeIndex = parseInt(selectedRoute.value);
+      const selectedRouteStations = window.suggestedRoutes[routeIndex];
+
+    try {
+      const trainData = {
+        name,
+        source,
+        destination,
+        speed,
+        route: selectedRouteStations.path
+      };
+
+      const addRes = await fetch("http://127.0.0.1:5000/add_train", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(trainData)
+      });
+
+      const addData = await addRes.json();
+      console.log("✅ Train Added:", addData);
+      alert(`Train ${name} added successfully!`);
+
+      // Clear form and hide finalize button
+      document.getElementById("trainName").value = "";
+      document.getElementById("source").value = "";
+      document.getElementById("destination").value = "";
+      document.getElementById("speed").value = "";
+      document.getElementById("routeOptions").innerHTML = "";
+      document.getElementById("finalizeBtn").style.display = "none";
+
+      // Refresh
+      loadTrainsOnMap();
+    } catch (error) {
+      console.error("Error finalizing train:", error);
+      alert("Failed to add train.");
+    }
+  }
+
+  function openAdvancedMap() {
+    window.open('advanced_live_map.html', '_blank');
+  }
+
+  async function suggestRoutes() {
+    const source = document.getElementById('source').value;
+    const destination = document.getElementById('destination').value;
+
+    if (!source || !destination) {
+      alert('Please select both source and destination.');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/suggest_routes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source, destination })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const routeOptionsDiv = document.getElementById('routeOptions');
+        routeOptionsDiv.innerHTML = '';
+
+        if (data.routes && data.routes.length > 0) {
+          window.suggestedRoutes = data.routes;
+          data.routes.forEach((route, index) => {
+            const routeDiv = document.createElement('div');
+            routeDiv.innerHTML = `
+              <input type="radio" name="selectedRoute" value="${index}" id="route${index}">
+              <label for="route${index}">Route ${index + 1}: ${route.path.join(' → ')} (${route.distance} km)</label><br>
+            `;
+            routeOptionsDiv.appendChild(routeDiv);
+          });
+          document.getElementById('finalizeBtn').style.display = 'block';
+        } else {
+          routeOptionsDiv.innerHTML = 'No routes found.';
+        }
+      } else {
+        alert('Error: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error suggesting routes:', error);
+      alert('Failed to fetch routes. Please try again.');
+    }
+  }
+</script>
+
+<script>
+// 🚨 AI-Powered Collision Detection and Train Safety Engine with Predictive Forecasting and Rerouting
+// ===================================================================================================
+// This engine integrates predictive collision forecasting and automatic rerouting suggestions.
+
+(function() {
+  console.log("✅ Enhanced Collision Engine Loaded");
+
+  // Minimum safe separation distance (in meters)
+  const SAFE_DISTANCE = 2000;
+  const CRITICAL_DISTANCE = 500;
+  const PREDICTION_TIME_MINUTES = [1, 2, 5, 10]; // Minutes ahead to predict
+
+  // Track active alert lines on the map
+  window.collisionLines = [];
+
+  // Utility to clear previous alert visuals
+  function clearCollisionVisuals() {
+    if (!window.liveMap || !window.collisionLines) return;
+    window.collisionLines.forEach(line => {
+      if (window.liveMap.hasLayer(line)) window.liveMap.removeLayer(line);
+    });
+    window.collisionLines = [];
+  }
+
+  // Utility to clear previous alert visuals
+  function clearCollisionVisuals() {
+    if (!window.liveMap || !window.collisionLines) return;
+    window.collisionLines.forEach(line => {
+      if (window.liveMap.hasLayer(line)) window.liveMap.removeLayer(line);
+    });
+    window.collisionLines = [];
+  }
+
+  // Utility: get train coordinates from markers
+  function getTrainPositions() {
+    if (!window.trainMarkers) return [];
+    const result = [];
+    for (const [name, marker] of Object.entries(window.trainMarkers)) {
+      const latLng = marker.getLatLng();
+      result.push({
+        name,
+        lat: latLng.lat,
+        lon: latLng.lng,
+        speed: window.railwayData.trains.find(t => t.name === name)?.speed || 60,
+        route: window.railwayData.trains.find(t => t.name === name)?.route || [],
+        progress: window.railwayData.trains.find(t => t.name === name)?.progress || 0,
+        speedFactor: window.railwayData.trains.find(t => t.name === name)?.speedFactor || 1
+      });
+    }
+    return result;
+  }
+
+  // Utility: get station by name
+  function getStation(name) {
+    return window.railwayData.stations.find(s => s.name === name);
+  }
+
+  // 🔥 Predict future position of a train
+  function predictTrainPosition(train, timeMinutes) {
+    const routeStations = train.route.map(r => getStation(r));
+    if (routeStations.length < 2) return { lat: train.lat, lon: train.lon };
+
+    const totalSegments = routeStations.length - 1;
+    let currentSegment = Math.floor(train.progress);
+    let remainingInSegment = train.progress - currentSegment;
+    let speed = train.speed * train.speedFactor; // km/h
+    let distancePerMinute = speed / 60; // km/min
+
+    let timeElapsed = 0;
+
+    while (timeElapsed < timeMinutes && currentSegment < totalSegments) {
+      const start = routeStations[currentSegment];
+      const end = routeStations[currentSegment + 1];
+      const segmentDist = L.latLng(start.lat, start.lon).distanceTo(L.latLng(end.lat, end.lon)) / 1000; // km
+      const remainingDist = segmentDist * (1 - remainingInSegment);
+      const timeForSegment = remainingDist / distancePerMinute;
+
+      if (timeElapsed + timeForSegment > timeMinutes) {
+        // Partial movement
+        const partialDist = (timeMinutes - timeElapsed) * distancePerMinute;
+        const fraction = partialDist / segmentDist;
+        const lat = start.lat + (end.lat - start.lat) * (remainingInSegment + fraction);
+        const lon = start.lon + (end.lon - start.lon) * (remainingInSegment + fraction);
+        return { lat, lon };
+      } else {
+        timeElapsed += timeForSegment;
+        currentSegment++;
+        remainingInSegment = 0;
+      }
+    }
+
+    // If reached end, stay at last station
+    const last = routeStations[routeStations.length - 1];
+    return { lat: last.lat, lon: last.lon };
+  }
+
+  // 🔥 Core Collision Detection Logic with Prediction
+  let collisionRunning = false;  
+  let collisionEngineEnabled = true;
+
+  async function detectAndHandleCollisions() {
+    if (collisionRunning) return; // STOP LOOPING
+    collisionRunning = true;
+
+    if (!window.liveMap || !window.trainMarkers) {
+      collisionRunning = false;
+      return;
+    }
+
+    clearCollisionVisuals();
+    const trains = getTrainPositions();
+    const alerts = [];
+    const predictiveAlerts = [];
+
+    // Real-time collision check
+    for (let i = 0; i < trains.length; i++) {
+      for (let j = i + 1; j < trains.length; j++) {
+        const t1 = trains[i];
+        const t2 = trains[j];
+        const pos1 = L.latLng(t1.lat, t1.lon);
+        const pos2 = L.latLng(t2.lat, t2.lon);
+        const distance = pos1.distanceTo(pos2);
+
+        if (distance < SAFE_DISTANCE) {
+          const action = distance < CRITICAL_DISTANCE ? "STOP" : "SLOW";
+          alerts.push({
+            trainA: t1.name,
+            trainB: t2.name,
+            distance: distance.toFixed(0),
+            action: action,
+            reason: "Immediate collision risk",
+            type: "immediate"
+          });
+        }
+      }
+    }
+
+    // Predictive collision check
+    for (let i = 0; i < trains.length; i++) {
+      for (let j = i + 1; j < trains.length; j++) {
+        const t1 = trains[i];
+        const t2 = trains[j];
+
+        for (const time of PREDICTION_TIME_MINUTES) {
+          const pos1 = predictTrainPosition(t1, time);
+          const pos2 = predictTrainPosition(t2, time);
+          const distance = L.latLng(pos1.lat, pos1.lon).distanceTo(L.latLng(pos2.lat, pos2.lon));
+
+          if (distance < SAFE_DISTANCE) {
+            predictiveAlerts.push({
+              trainA: t1.name,
+              trainB: t2.name,
+              distance: distance.toFixed(0),
+              time: time,
+              reason: `Predicted collision in ${time} min`,
+              type: "predictive"
+            });
+            break; // Stop at first prediction time that triggers
+          }
+        }
+      }
+    }
+
+    // Combine alerts
+    const allAlerts = [...alerts, ...predictiveAlerts];
+
+    if (allAlerts.length > 0) {
+      console.warn("🚨 Collision Alerts:", allAlerts);
+      updateCollisionPanel(allAlerts);
+
+      // Optional: Send to backend AI for reasoning
+      try {
+        const res = await fetch("http://127.0.0.1:5000/decide", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            trains: trains   // <-- THIS is what Flask expects
+          })
+        });
+
+        const aiDecisions = await res.json();
+        console.log("🤖 AI Decisions:", aiDecisions);
+
+      } catch (err) {
+        console.warn("⚠️ AI backend not reachable — running local collision logic only.");
+      }
+
+    } else {
+      updateCollisionPanel([]);
+    }
+
+    // Apply immediate controls
+    alerts.forEach(a => {
+      applySpeedControl(a.trainA, a.action);
+      applySpeedControl(a.trainB, a.action);
+    });
+
+    collisionRunning = false; // allow next update
+  }
+
+  // 🧭 Apply Train Control Based on Action
+  function applySpeedControl(trainName, action) {
+    const trainObj = window.railwayData.trains.find(t => t.name === trainName);
+    if (!trainObj) return;
+    if (action === "STOP") trainObj.speedFactor = 0;
+    else if (action === "SLOW") trainObj.speedFactor = 0.5;
+  }
+
+  // 🚦 Suggest and Apply Rerouting
+  async function suggestReroute(trainName) {
+    const train = window.railwayData.trains.find(t => t.name === trainName);
+    if (!train) return;
+
+    const source = train.route[0]; // Assume starting from first station
+    const destination = train.route[train.route.length - 1];
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/suggest_routes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source, destination })
+      });
+
+      const data = await response.json();
+      if (data.routes && data.routes.length > 1) {
+        // Take the second route as alternative
+        const newRoute = data.routes[1].path;
+        applyReroute(trainName, newRoute);
+        alert(`Rerouted ${trainName} to alternative path: ${newRoute.join(' → ')}`);
+      } else {
+        alert('No alternative routes available.');
+      }
+    } catch (error) {
+      console.error('Error suggesting reroute:', error);
+      alert('Failed to fetch alternative routes.');
+    }
+  }
+
+  function applyReroute(trainName, newRoute) {
+    const train = window.railwayData.trains.find(t => t.name === trainName);
+    if (!train) return;
+
+    train.route = newRoute;
+    train.progress = 0; // Reset progress
+    train.speedFactor = 1; // Reset speed
+
+    // Update marker and polyline
+    if (window.trainMarkers[trainName]) {
+      const newCoords = newRoute.map(s => window.liveStations[s]).filter(Boolean);
+      if (newCoords.length >= 2) {
+        window.trainMarkers[trainName].setLatLng(newCoords[0]);
+        if (window.trainPolylines[trainName]) {
+          window.liveMap.removeLayer(window.trainPolylines[trainName]);
+        }
+        window.trainPolylines[trainName] = L.polyline(newCoords, {
+          color: "#00ffff",
+          weight: 3,
+          dashArray: "5, 10"
+        }).addTo(window.trainLayer);
+      }
+    }
+  }
+
+  // 🧾 Update Collision Status Panel on Dashboard
+  function updateCollisionPanel(alerts) {
+    const panel = document.getElementById("alert-panel");
+    if (!panel) return;
+    panel.innerHTML = "";
+
+    if (alerts.length === 0) {
+      panel.innerHTML = "<div style='color:lime'>✅ No collision risks detected.</div>";
+      return;
+    }
+
+    alerts.forEach(a => {
+      const div = document.createElement("div");
+      div.className = "alert";
+      let html = `
+        🚨 <b>${a.type === 'predictive' ? 'PREDICTED' : a.action}</b> — ${a.trainA} ↔ ${a.trainB}<br>
+        Distance: ${a.distance} m<br>
+        Reason: ${a.reason}
+      `;
+      if (a.type === 'predictive') {
+        html += `<br><button onclick="suggestReroute('${a.trainA}')">Reroute ${a.trainA}</button>
+                 <button onclick="suggestReroute('${a.trainB}')">Reroute ${a.trainB}</button>`;
+      }
+      div.innerHTML = html;
+      panel.appendChild(div);
+    });
+  }
+
+  // Initialize train statuses
+  window.railwayData.trains.forEach(train => {
+    if (!train.status) train.status = "RUNNING";
+  });
+
+  // Function to apply AI decision
+  function applyDecision(decision) {
+    decision.affected_trains.forEach(trainName => {
+      const train = window.railwayData.trains.find(t => t.name === trainName);
+      if (!train) return;
+
+      if (decision.action === "STOP") {
+        train.status = "STOPPED";
+        train.speedFactor = 0;
+      } else if (decision.action === "SLOW") {
+        train.status = "SLOWING";
+        train.speedFactor = 0.5;
+      } else if (decision.action === "REROUTE" && decision.new_route) {
+        train.status = "REROUTING";
+        train.route = decision.new_route;
+        train.progress = 0.0;
+        train.speedFactor = 1;
+        showReroutePath(train);
+      } else if (decision.action === "NORMAL") {
+        train.status = "RUNNING";
+        train.speedFactor = 1;
+      }
+    });
+
+    // Update visuals after applying decisions
+    updateTrainVisualsOnLiveMap();
+    updateTrainVisualsOnAdminMap();
+  }
+
+  // Function to show reroute path
+  function showReroutePath(train) {
+    if (!window.liveMap) return;
+    const coords = train.route
+      .map(st => {
+        const s = window.railwayData.stations.find(a => a.name === st);
+        return s ? [s.lat, s.lon] : null;
+      })
+      .filter(Boolean);
+
+    if (coords.length < 2) return;
+
+    const routeLine = L.polyline(coords, {
+      color: "#00ffff",
+      weight: 5,
+      dashArray: "10,6",
+      opacity: 0.7
+    }).addTo(window.liveMap);
+
+    // Flash animation
+    let visible = true;
+    const blink = setInterval(() => {
+      visible = !visible;
+      routeLine.setStyle({ opacity: visible ? 0.7 : 0.2 });
+    }, 500);
+
+    setTimeout(() => {
+      clearInterval(blink);
+      if (window.liveMap.hasLayer(routeLine)) window.liveMap.removeLayer(routeLine);
+    }, 7000);
+  }
+
+  // Function to update train visuals on admin map
+  function updateTrainVisualsOnAdminMap() {
+    if (!adminMap) return;
+    const svg = d3.select("#admin-map").select("svg");
+    const g = svg.select("g.leaflet-zoom-hide");
+
+    window.railwayData.trains.forEach(train => {
+      const color =
+        train.status === "STOPPED" ? "#ff0000" :
+        train.status === "SLOWING" ? "#ffcc00" :
+        train.status === "REROUTING" ? "#00ffff" :
+        "#00ff44";
+
+      const trainSel = g.selectAll("circle.train").filter(d => d.name === train.name);
+      trainSel.attr("fill", color);
+
+      // Add or update label
+      let labelSel = g.selectAll("text.train-label").filter(d => d.name === train.name);
+      if (labelSel.empty()) {
+        g.append("text")
+          .datum(train)
+          .attr("class", "train-label")
+          .attr("font-size", "10px")
+          .attr("fill", "#fff")
+          .attr("stroke", "#000")
+          .attr("stroke-width", 0.5)
+          .style("pointer-events", "none");
+      }
+      labelSel = g.selectAll("text.train-label").filter(d => d.name === train.name);
+      labelSel.text(`${train.name} (${train.status})`);
+      // Note: Position is handled in animateTrains, so labels may need repositioning
+    });
+  }
+
+  // Function to update train visuals on live map
+  function updateTrainVisualsOnLiveMap() {
+    if (!window.liveMap || !window.trainMarkers) return;
+
+    window.railwayData.trains.forEach(train => {
+      const marker = window.trainMarkers[train.name];
+      if (!marker) return;
+
+      const color =
+        train.status === "STOPPED" ? "#ff0000" :
+        train.status === "SLOWING" ? "#ffcc00" :
+        train.status === "REROUTING" ? "#00ffff" :
+        "#00ff44";
+
+      marker.setStyle({ color: color, fillColor: color });
+      marker.bindTooltip(`${train.name} (${train.status})`);
+    });
+  }
+
+  // Debug log
+  console.table(window.railwayData.trains.map(t => ({
+    Train: t.name,
+    Status: t.status,
+    Speed: t.speed.toFixed(4),
+    Progress: (t.progress * 100).toFixed(2) + "%"
+  })));
+
+  // 🎯 Run collision checks continuously every 2 seconds
+  async function collisionLoop() {
+  if (!collisionEngineEnabled) return;
+  await detectAndHandleCollisions();
+  setTimeout(collisionLoop, 2000);  // controlled loop
+}
+
+collisionLoop(); // start once
+
+
+
+})();
+</script>
+
+</body>
+</html>
