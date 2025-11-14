@@ -1,9 +1,11 @@
 # RAILWAY
-##Front-End
-###React + TypeScript
-:UI framework
-## Neo4j (Best Graph Database for Rail)
 
+## Front-End
+
+### React + TypeScript
+* UI framework
+
+## Neo4j (Best Graph Database for Rail)
 ### Data Model
 
 * **Stations** = Nodes
